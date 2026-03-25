@@ -1,55 +1,36 @@
-# birthday/views.py 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.core.paginator import Paginator
-from django.views.generic import ListView, CreateView, UpdateView
+# birthday/views.py
+from django.views.generic import (
+    CreateView, DeleteView, DetailView, ListView, UpdateView
+)
 from django.urls import reverse_lazy
 
 from .forms import BirthdayForm
 from .models import Birthday
-# Импортируем из utils.py функцию для подсчёта дней.
 from .utils import calculate_birthday_countdown
 
-
-# Создаём миксин.
-class BirthdayMixin:
-    model = Birthday
-    form_class = BirthdayForm
-    template_name = 'birthday/birthday.html'
-    success_url = reverse_lazy('birthday:list')
-
-
-# Добавляем миксин первым по списку родительских классов.
-class BirthdayCreateView(BirthdayMixin, CreateView):
-    # Не нужно описывать атрибуты: все они унаследованы от BirthdayMixin.
-    pass
-
-
-class BirthdayUpdateView(BirthdayMixin, UpdateView):
-    # И здесь все атрибуты наследуются от BirthdayMixin.
-    pass
-
-
 class BirthdayListView(ListView):
-    # Указываем модель, с которой работает CBV...
     model = Birthday
-    # ...сортировку, которая будет применена при выводе списка объектов:
     ordering = 'id'
-    # ...и даже настройки пагинации:
     paginate_by = 10
 
+class BirthdayCreateView(CreateView):
+    model = Birthday
+    form_class = BirthdayForm
 
-def delete_birthday(request, pk):
-    # Получаем объект модели или выбрасываем 404 ошибку.
-    instance = get_object_or_404(Birthday, pk=pk)
-    # В форму передаём только объект модели;
-    # передавать в форму параметры запроса не нужно.
-    form = BirthdayForm(instance=instance)
-    context = {'form': form}
-    # Если был получен POST-запрос...
-    if request.method == 'POST':
-        # ...удаляем объект:
-        instance.delete()
-        # ...и переадресовываем пользователя на страницу со списком записей.
-        return redirect('birthday:list')
-    # Если был получен GET-запрос — отображаем форму.
-    return render(request, 'birthday/birthday.html', context)
+class BirthdayUpdateView(UpdateView):
+    model = Birthday
+    form_class = BirthdayForm
+
+class BirthdayDeleteView(DeleteView):
+    model = Birthday
+    success_url = reverse_lazy('birthday:list')
+
+class BirthdayDetailView(DetailView):
+    model = Birthday
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['birthday_countdown'] = calculate_birthday_countdown(
+            self.object.birthday
+        )
+        return context
